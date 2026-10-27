@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0d0f13" />
+<title>Forno da Vila · Cardápio na TV</title>
+<!--
+  Layout TV para LG webOS 2021 (webOS 6.0 / Chromium 79).
+
+  Regras de performance aplicadas (não remova sem medir na TV):
+  - zero dependências, zero fontes externas, zero imagens de rede;
+  - uma única requisição HTTP (este arquivo);
+  - sem backdrop-filter, sem box-shadow com blur, sem filter;
+  - sem animação por frame: só opacity em toast;
+  - sem flex `gap` (Chrome 84+), sem aspect-ratio, sem inset, sem :is();
+  - navegação por controle remoto com destaque de foco explícito.
+-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html { font-size: 1vh; }               /* 1rem = 10.8px em 1080p */
+  :root {
+    --bg: #0d0f13;
+    --surface: #161a21;
+    --surface-2: #1d232c;
+    --line: #272e39;
+    --text: #eef1f5;
+    --muted: #98a2ae;
+    --accent: #ff7a3d;
+    --ok: #52d67a;
+    --r: 1.4rem;
+  }
+  body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "LG Smart UI", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
+  button { font: inherit; color: inherit; }
+  button:focus { outline: none; }
+  .focused { outline: .3rem solid var(--accent); outline-offset: .2rem; }
+  .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .ico { width: 2.4rem; height: 2.4rem; }
+
+  .app { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; }
+
+  /* ---------- topo ---------- */
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 2.6rem 3.4rem 1.8rem;
+  }
+  .brand { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 1.8rem; align-items: center; }
+  .logo {
+    display: grid; place-items: center;
+    width: 6.4rem; height: 6.4rem;
+    border-radius: 1.8rem;
+    background: linear-gradient(135deg, #ff8a4c, #d9352f);
+    color: #fff; font-size: 2.8rem; font-weight: 800;
+  }
+  .brand h1 { margin: 0; font-size: 2.9rem; font-weight: 700; letter-spacing: -.02em; }
+  .brand p { margin: .5rem 0 0; font-size: 1.6rem; color: var(--muted); }
+  .live { display: inline-block; width: .9rem; height: .9rem; margin-right: .8rem; border-radius: 50%; background: var(--ok); vertical-align: middle; }
+  .stats { display: grid; grid-auto-flow: column; column-gap: 1.2rem; }
+  .stat {
+    display: grid; row-gap: .2rem;
+    min-width: 12rem;
+    padding: 1rem 2rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    text-align: center;
+  }
+  .stat b { font-size: 2rem; font-weight: 700; }
+  .stat span { font-size: 1.3rem; color: var(--muted); }
+
+  /* ---------- corpo ---------- */
+  .body {
+    display: grid;
+    grid-template-columns: 27rem minmax(0, 1fr) 40rem;
+    column-gap: 2.4rem;
+    padding: 0 3.4rem;
+    min-height: 0;
+  }
+
+  /* rail de categorias */
+  .rail { display: grid; grid-auto-rows: min-content; row-gap: 1rem; align-content: start; min-height: 0; }
+  .rail-title { margin: 0 0 .8rem; font-size: 1.3rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .cat {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 1.4rem;
+    align-items: center;
+    padding: 1.7rem 1.8rem;
+    border: 1px solid transparent;
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--muted);
+    font-size: 2rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+  .cat .count { font-size: 1.4rem; font-weight: 600; color: #6b7683; }
+  .cat.focused { background: var(--surface); border-color: #39424f; color: #fff; }
+  .cat.selected { color: var(--accent); }
+  .cat.selected .ico { color: var(--accent); }
+
+  /* grade de produtos */
+  .stage { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; row-gap: 1.6rem; min-height: 0; }
+  .stage-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; }
+  .stage-head h2 { margin: 0; font-size: 2.4rem; font-weight: 700; }
+  .stage-head span { font-size: 1.4rem; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 1.6rem; min-height: 0; }
+  .card {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    text-align: left;
+    cursor: pointer;
+  }
+  .card.focused { border-color: transparent; background: var(--surface-2); }
+  .card-thumb {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    background: radial-gradient(120% 100% at 28% 18%, #2b323c, #171c23);
+    color: #414c5a;
+  }
+  .card-thumb .ico { width: 7.6rem; height: 7.6rem; }
+  .badge {
+    position: absolute; top: 1.1rem; left: 1.1rem;
+    padding: .4rem 1rem;
+    border-radius: 999px;
+    background: rgba(255, 122, 61, .16);
+    color: var(--accent);
+    font-size: 1.2rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .card-meta { display: grid; row-gap: .4rem; padding: 1.4rem 1.6rem 1.6rem; }
+  .card-meta h3 { margin: 0; font-size: 2rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-meta p { margin: 0; font-size: 1.4rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; margin-top: .6rem; }
+  .price { font-size: 2rem; font-weight: 700; }
+  .time { font-size: 1.3rem; color: var(--muted); }
+  .pager { display: grid; grid-auto-flow: column; justify-content: center; align-items: center; column-gap: 1rem; height: 3.2rem; }
+  .page-btn {
+    width: 3.2rem; height: 3.2rem;
+    border: 1px solid #303947;
+    border-radius: 999px;
+    background: #171c23;
+    color: var(--muted);
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .page-btn.focused { color: #fff; }
+  .page-btn[disabled] { opacity: .3; }
+  .page-dot { width: 1rem; height: 1rem; border-radius: 999px; background: #2b3340; }
+  .page-dot.on { width: 2.8rem; background: var(--accent); }
+  .empty-state { display: grid; place-items: center; grid-row: 1 / -1; grid-column: 1 / -1; color: var(--muted); font-size: 1.8rem; }
+
+  /* carrinho */
+  .cart {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    row-gap: 1.6rem;
+    padding: 2rem;
+    border: 1px solid var(--line);
+    border-radius: 1.8rem;
+    background: linear-gradient(180deg, #171c23, #12151b);
+    min-height: 0;
+  }
+  .cart-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .cart-head h2 { margin: 0; font-size: 2.2rem; font-weight: 700; }
+  .chip { padding: .4rem 1rem; border: 1px solid var(--line); border-radius: 999px; font-size: 1.3rem; color: var(--muted); }
+  .cart-items { display: grid; grid-auto-rows: min-content; row-gap: 1rem; align-content: start; overflow-y: auto; scrollbar-width: none; min-height: 0; }
+  .cart-items::-webkit-scrollbar { display: none; }
+  .ci {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+    column-gap: 1.4rem; align-items: center;
+    width: 100%;
+    padding: 1.4rem 1.6rem;
+    border: 1px solid var(--line);
+    border-radius: 1.2rem;
+    background: #141920;
+    text-align: left;
+    cursor: pointer;
+  }
+  .ci.focused { border-color: transparent; background: var(--surface-2); }
+  .ci-qty { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+  .ci-line { font-size: 1.5rem; font-weight: 600; }
+  .ci-name { font-size: 1.6rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ci-sub { margin-top: .2rem; font-size: 1.2rem; color: var(--muted); }
+  .stepper { display: grid; grid-auto-flow: column; align-items: center; border: 1px solid #303947; border-radius: 999px; overflow: hidden; }
+  .stepper button { width: 3.4rem; height: 3.4rem; border: 0; background: transparent; color: var(--muted); font-size: 1.9rem; font-weight: 700; cursor: pointer; }
+  .stepper button.focused { color: #fff; }
+  .stepper .qty { min-width: 2.4rem; text-align: center; font-size: 1.5rem; font-weight: 700; }
+  .cart-empty { display: grid; place-items: center; align-content: center; row-gap: .6rem; text-align: center; color: var(--muted); font-size: 1.6rem; }
+  .cart-empty b { color: var(--text); font-size: 1.8rem; }
+  .cart-foot { display: grid; row-gap: 1.2rem; }
+  .totals { display: grid; row-gap: .7rem; padding-top: 1.4rem; border-top: 1px solid var(--line); }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; font-size: 1.5rem; color: var(--muted); }
+  .row.total { font-size: 2.1rem; font-weight: 700; color: #fff; }
+  .cta {
+    width: 100%;
+    padding: 1.7rem 2rem;
+    border: 0;
+    border-radius: 1.2rem;
+    background: var(--accent);
+    color: #1d0e06;
+    font-size: 2rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .cta.focused { outline-color: #fff; }
+  .cta[disabled] { background: #2a3140; color: #6b7683; cursor: default; }
+
+  /* ---------- rodapé ---------- */
+  .hints { display: grid; grid-auto-flow: column; justify-content: center; column-gap: 2.6rem; padding: 1.2rem 3.4rem 2rem; font-size: 1.3rem; color: #7d8794; }
+  .hints span { white-space: nowrap; }
+  kbd {
+    display: inline-grid; place-items: center;
+    min-width: 2.4rem; height: 2.4rem;
+    margin-right: .7rem; padding: 0 .6rem;
+    border: 1px solid #333c48; border-radius: .6rem;
+    background: #1a1f27; color: #c4cbd4;
+    font-family: inherit; font-size: 1.2rem; font-weight: 700;
+  }
+
+  /* ---------- detalhe do prato ---------- */
+  .overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; padding: 6rem; background: rgba(6, 8, 11, .88); }
+  .overlay[hidden] { display: none; }
+  .sheet {
+    display: grid;
+    grid-template-columns: 40rem minmax(0, 1fr);
+    width: min(92rem, 92vw);
+    overflow: hidden;
+    border: 1px solid #333c48;
+    border-radius: 2rem;
+    background: #151a21;
+  }
+  .sheet-thumb { display: grid; place-items: center; min-height: 42rem; background: radial-gradient(120% 100% at 28% 18%, #2b323c, #12161c); color: #4a5563; }
+  .sheet-thumb .ico { width: 12rem; height: 12rem; }
+  .sheet-body { display: grid; align-content: start; row-gap: 1.4rem; padding: 3.2rem; }
+  .sheet-body h2 { margin: 0; font-size: 3.2rem; font-weight: 700; letter-spacing: -.02em; }
+  .sheet-body p { margin: 0; font-size: 1.7rem; line-height: 1.5; color: var(--muted); }
+  .sheet-meta { display: grid; grid-template-columns: auto auto; justify-content: start; column-gap: 2.4rem; font-size: 1.4rem; color: var(--muted); }
+  .sheet-price { font-size: 3rem; font-weight: 800; }
+  .sheet-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 1.2rem; margin-top: 1rem; }
+  .sheet-links { display: grid; grid-auto-flow: column; justify-content: start; column-gap: 1.2rem; margin-top: .6rem; }
+  .ghost.danger { color: #ff9b86; border-color: #4a2c28; }
+  .ghost {
+    padding: 1.7rem 2.4rem;
+    border: 1px solid #3a4352;
+    border-radius: 1.2rem;
+    background: transparent;
+    color: var(--text);
+    font-size: 1.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* ---------- aviso ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 9rem;
+    padding: 1.2rem 2.6rem;
+    border: 1px solid #37414f;
+    border-radius: 999px;
+    background: #1f2731;
+    font-size: 1.6rem;
+    opacity: 0;
+    transition: opacity .18s linear;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <symbol id="i-star" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3.2l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17.2l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />
+    </g>
+  </symbol>
+  <symbol id="i-pizza" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="8.8" />
+    </g>
+    <g fill="currentColor">
+      <circle cx="9.4" cy="9.6" r="1.1" />
+      <circle cx="14.4" cy="10.4" r="1.1" />
+      <circle cx="11.4" cy="14.6" r="1.1" />
+    </g>
+  </symbol>
+  <symbol id="i-drink" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 3.5h10l-1.3 15.6a1.6 1.6 0 0 1-1.6 1.4h-4.2a1.6 1.6 0 0 1-1.6-1.4z" />
+      <path d="M7.7 9.5h8.6" />
+    </g>
+  </symbol>
+  <symbol id="i-dessert" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.4 20.6h15.2" />
+      <path d="M5.6 20.6v-6.2a2 2 0 0 1 2-2h8.8a2 2 0 0 1 2 2v6.2" />
+      <path d="M12 12.4V8.6" />
+      <path d="M12 6.3c1.1-.7 1.1-1.9 0-2.8-1.1.9-1.1 2.1 0 2.8z" />
+    </g>
+  </symbol>
+  <symbol id="i-burger" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 9.4a8 8 0 0 1 16 0z" />
+      <path d="M4 12.6h16" />
+      <path d="M4.9 15.6h14.2a2 2 0 0 1 0 4.2H4.9a2 2 0 0 1 0-4.2z" />
+    </g>
+  </symbol>
+</svg>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" id="logo">FV</div>
+      <div>
+        <h1 id="store-name">Forno da Vila</h1>
+        <p>
+          <i class="live"></i><span id="store-status">Aberto até 23:30</span>
+          <span id="source" style="color:#6b7683"> · demonstração</span>
+        </p>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="stat-rating">4,9</b><span>avaliação</span></div>
+      <div class="stat"><b id="stat-time">35–45 min</b><span>entrega</span></div>
+      <div class="stat"><b id="stat-clock">--:--</b><span>agora</span></div>
+    </div>
+  </header>
+
+  <div class="body">
+    <nav class="rail" id="rail" aria-label="Categorias"></nav>
+
+    <main class="stage">
+      <div class="stage-head">
+        <h2 id="stage-title">Destaques</h2>
+        <span id="stage-count"></span>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="pager" id="pager"></div>
+    </main>
+
+    <aside class="cart" aria-label="Seu pedido">
+      <div class="cart-head">
+        <h2>Seu pedido</h2>
+        <span class="chip" id="cart-count">0 itens</span>
+      </div>
+      <div class="cart-items" id="cart-items"></div>
+      <div class="cart-foot">
+        <div class="totals" id="totals"></div>
+        <button class="cta" type="button" data-focusable data-fkey="cta" data-action="submit">Enviar pedido</button>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="hints" id="hints">
+    <span><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> navegar</span>
+    <span id="hint-page" hidden><kbd>CH+</kbd><kbd>CH−</kbd> página</span>
+    <span><kbd>OK</kbd> selecionar</span>
+    <span><kbd>‹</kbd> voltar</span>
+  </footer>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet">
+    <div class="sheet-thumb" id="sheet-thumb"></div>
+    <div class="sheet-body">
+      <h2 id="sheet-title"></h2>
+      <p id="sheet-desc"></p>
+      <div class="sheet-meta">
+        <span id="sheet-time"></span>
+        <span id="sheet-cat"></span>
+      </div>
+      <div class="sheet-price" id="sheet-price"></div>
+      <div class="sheet-actions">
+        <div class="stepper">
+          <button type="button" data-focusable data-fkey="ov-dec" data-action="ov-dec">−</button>
+          <span class="qty" id="ov-qty">1</span>
+          <button type="button" data-focusable data-fkey="ov-inc" data-action="ov-inc">+</button>
+        </div>
+        <button class="cta" type="button" data-focusable data-fkey="ov-add" data-action="ov-add">Adicionar</button>
+      </div>
+      <div class="sheet-links">
+        <button class="ghost" type="button" data-focusable data-fkey="ov-close" data-action="ov-close">Voltar</button>
+        <button class="ghost danger" id="ov-remove" type="button" data-focusable data-fkey="ov-remove" data-action="ov-remove">Remover do pedido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var PAGE_SIZE = 9;
+  var API_BASE = 'http://localhost:8080';
+
+  var DEMO = {
+    name: 'Forno da Vila',
+    rating: '4,9',
+    deliveryTime: '35–45 min',
+    deliveryFee: 6.9,
+    status: 'Aberto até 23:30'
+  };
+
+  var DISHES = [
+    { id: 'p1', name: 'Margherita', desc: 'Molho de tomate italiano, muçarela de búfala e basílico fresco.', price: 54.9, category: 'Pizzas', time: 25, tag: 'Mais pedido' },
+    { id: 'p2', name: 'Calabresa da Vila', desc: 'Calabresa artesanal, cebola roxa e orégano.', price: 58.9, category: 'Pizzas', time: 25 },
+    { id: 'p3', name: 'Quatro Queijos', desc: 'Muçarela, gorgonzola, parmesão e provolone.', price: 64.9, category: 'Pizzas', time: 28 },
+    { id: 'p4', name: 'Pepperoni', desc: 'Pepperoni levemente picante, muçarela e mel picante.', price: 62.9, category: 'Pizzas', time: 25, tag: 'Picante' },
+    { id: 'p5', name: 'Vegetariana', desc: 'Abobrinha, berinjela, tomate confitado e rúcula.', price: 56.9, category: 'Pizzas', time: 27 },
+    { id: 'e1', name: 'Focaccia de alho', desc: 'Assada na hora com alho confitado e ervas.', price: 22.9, category: 'Entradas', time: 15 },
+    { id: 'e2', name: 'Pão de alho trufado', desc: 'Pão italiano, manteiga trufada e parmesão.', price: 19.9, category: 'Entradas', time: 12 },
+    { id: 'b1', name: 'Limonada suíça', desc: 'Limão, leite condensado e gelo. Jarra 500 ml.', price: 12.9, category: 'Bebidas', time: 5 },
+    { id: 'b2', name: 'Refrigerante lata', desc: 'Lata 350 ml, bem gelada.', price: 7.9, category: 'Bebidas', time: 1 },
+    { id: 'b3', name: 'Vinho da casa', desc: 'Tinto seco, taça 150 ml.', price: 39.9, category: 'Bebidas', time: 2 },
+    { id: 's1', name: 'Petit gâteau', desc: 'Bolo quente de chocolate com sorvete de creme.', price: 26.9, category: 'Sobremesas', time: 12, tag: 'Quente' },
+    { id: 's2', name: 'Tiramisù', desc: 'Café, mascarpone e cacau.', price: 24.9, category: 'Sobremesas', time: 8 },
+    { id: 's3', name: 'Pizza de Nutella', desc: 'Nutella, morango e açúcar de confeiteiro.', price: 44.9, category: 'Sobremesas', time: 20 }
+  ];
+
+  var CATEGORY_ICONS = {
+    Pizzas: 'i-pizza',
+    Entradas: 'i-burger',
+    Bebidas: 'i-drink',
+    Sobremesas: 'i-dessert'
+  };
+
+  var money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  var state = {
+    store: DEMO,
+    dishes: DISHES.slice(),
+    categories: [],
+    category: 'all',
+    page: 0,
+    cart: [],
+    overlayId: null,
+    overlayQty: 1,
+    focusEl: null,
+    lastKey: null,
+    preOverlayKey: null
+  };
+
+  var el = {
+    rail: document.getElementById('rail'),
+    grid: document.getElementById('grid'),
+    pager: document.getElementById('pager'),
+    title: document.getElementById('stage-title'),
+    count: document.getElementById('stage-count'),
+    cartItems: document.getElementById('cart-items'),
+    cartCount: document.getElementById('cart-count'),
+    totals: document.getElementById('totals'),
+    cta: document.querySelector('.cta[data-action="submit"]'),
+    overlay: document.getElementById('overlay'),
+    toast: document.getElementById('toast')
+  };
+
+  /* ---------------- utilidades ---------------- */
+
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function iconFor(category) {
+    return CATEGORY_ICONS[category] || 'i-star';
+  }
+
+  function svg(name, className) {
+    return '<svg class="' + (className || 'ico') + '" aria-hidden="true"><use href="#' + name + '"></use></svg>';
+  }
+
+  function buildCategories() {
+    var list = [{ id: 'all', label: 'Destaques', icon: 'i-star' }];
+    var seen = {};
+    for (var i = 0; i < state.dishes.length; i += 1) {
+      var cat = state.dishes[i].category;
+      if (cat && !seen[cat]) {
+        seen[cat] = true;
+        list.push({ id: cat, label: cat, icon: iconFor(cat) });
+      }
+    }
+    state.categories = list;
+  }
+
+  function currentItems() {
+    if (state.category === 'all') return state.dishes;
+    return state.dishes.filter(function (dish) { return dish.category === state.category; });
+  }
+
+  function pageCount() {
+    return Math.max(1, Math.ceil(currentItems().length / PAGE_SIZE));
+  }
+
+  function findDish(id) {
+    for (var i = 0; i < state.dishes.length; i += 1) {
+      if (state.dishes[i].id === id) return state.dishes[i];
+    }
+    return null;
+  }
+
+  function cartCount() {
+    var total = 0;
+    for (var i = 0; i < state.cart.length; i += 1) total += state.cart[i].qty;
+    return total;
+  }
+
+  function cartSubtotal() {
+    var total = 0;
+    for (var i = 0; i < state.cart.length; i += 1) {
+      var dish = findDish(state.cart[i].id);
+      if (dish) total += dish.price * state.cart[i].qty;
+    }
+    return total;
+  }
+
+  /* ---------------- renderização ---------------- */
+
+  function renderRail() {
+    var html = '<p class="rail-title">Categorias</p>';
+    for (var i = 0; i < state.categories.length; i += 1) {
+      var cat = state.categories[i];
+      var total = cat.id === 'all' ? state.dishes.length : state.dishes.filter(function (dish) {
+        return dish.category === cat.id;
+      }).length;
+      html += '<button type="button" class="cat' + (cat.id === state.category ? ' selected' : '') + '"'
+        + ' data-focusable data-fkey="cat-' + esc(cat.id) + '" data-action="cat" data-id="' + esc(cat.id) + '">'
+        + svg(cat.icon) + '<span>' + esc(cat.label) + '</span><span class="count">' + total + '</span>'
+        + '</button>';
+    }
+    el.rail.innerHTML = html;
+  }
+
+  function renderGrid() {
+    var items = currentItems();
+    var pages = pageCount();
+    if (state.page >= pages) state.page = pages - 1;
+    if (state.page < 0) state.page = 0;
+
+    var start = state.page * PAGE_SIZE;
+    var slice = items.slice(start, start + PAGE_SIZE);
+    var html = '';
+
+    if (!slice.length) {
+      html = '<div class="empty-state">Nenhum item nesta categoria.</div>';
+    } else {
+      for (var i = 0; i < slice.length; i += 1) {
+        var dish = slice[i];
+        html += '<button type="button" class="card" data-focusable data-fkey="dish-' + esc(dish.id) + '"'
+          + ' data-action="dish" data-id="' + esc(dish.id) + '">'
+          + '<div class="card-thumb">'
+          + (dish.tag ? '<span class="badge">' + esc(dish.tag) + '</span>' : '')
+          + svg(iconFor(dish.category))
+          + '</div>'
+          + '<div class="card-meta">'
+          + '<h3>' + esc(dish.name) + '</h3>'
+          + '<p>' + esc(dish.desc) + '</p>'
+          + '<div class="card-foot">'
+          + '<span class="price">' + money.format(dish.price) + '</span>'
+          + '<span class="time">' + esc(dish.time) + ' min</span>'
+          + '</div></div></button>';
+      }
+    }
+    el.grid.innerHTML = html;
+
+    var selected = null;
+    for (var c = 0; c < state.categories.length; c += 1) {
+      if (state.categories[c].id === state.category) selected = state.categories[c];
+    }
+    el.title.textContent = selected ? selected.label : 'Destaques';
+    el.count.textContent = items.length === 0 ? '' : (start + 1) + '–' + (start + slice.length) + ' de ' + items.length;
+
+    var dots = '';
+    for (var p = 0; p < pages; p += 1) {
+      dots += '<span class="page-dot' + (p === state.page ? ' on' : '') + '"></span>';
+    }
+    el.pager.innerHTML = pages > 1
+      ? '<button type="button" class="page-btn" data-focusable data-fkey="page-prev" data-action="page-prev" aria-label="Página anterior"' + (state.page === 0 ? ' disabled' : '') + '>‹</button>'
+        + dots
+        + '<button type="button" class="page-btn" data-focusable data-fkey="page-next" data-action="page-next" aria-label="Próxima página"' + (state.page === pages - 1 ? ' disabled' : '') + '>›</button>'
+      : '';
+
+    var hintPage = document.getElementById('hint-page');
+    if (hintPage) {
+      if (pages > 1) hintPage.removeAttribute('hidden');
+      else hintPage.setAttribute('hidden', 'hidden');
+    }
+  }
+
+  function renderCart() {
+    if (!state.cart.length) {
+      el.cartItems.innerHTML = '<div class="cart-empty"><b>Seu pedido está vazio</b><span>Escolha um item do cardápio.</span></div>';
+    } else {
+      var html = '';
+      for (var i = 0; i < state.cart.length; i += 1) {
+        var line = state.cart[i];
+        var dish = findDish(line.id);
+        if (!dish) continue;
+        html += '<button type="button" class="ci" data-focusable data-fkey="line-' + esc(line.id) + '"'
+          + ' data-action="dish" data-id="' + esc(line.id) + '">'
+          + '<div><div class="ci-name">' + esc(dish.name) + '</div>'
+          + '<div class="ci-sub">' + money.format(dish.price) + ' cada</div></div>'
+          + '<span class="ci-qty">×' + line.qty + '</span>'
+          + '<span class="ci-line">' + money.format(dish.price * line.qty) + '</span>'
+          + '</button>';
+      }
+      el.cartItems.innerHTML = html;
+    }
+
+    var count = cartCount();
+    el.cartCount.textContent = count + (count === 1 ? ' item' : ' itens');
+
+    var subtotal = cartSubtotal();
+    var fee = count ? state.store.deliveryFee : 0;
+    el.totals.innerHTML = '<div class="row"><span>Subtotal</span><span>' + money.format(subtotal) + '</span></div>'
+      + '<div class="row"><span>Entrega</span><span>' + money.format(fee) + '</span></div>'
+      + '<div class="row total"><span>Total</span><span>' + money.format(subtotal + fee) + '</span></div>';
+
+    if (!count) el.cta.setAttribute('disabled', 'disabled');
+    else el.cta.removeAttribute('disabled');
+  }
+
+  function renderHeader() {
+    var store = state.store;
+    document.getElementById('store-name').textContent = store.name;
+    document.getElementById('logo').textContent = store.name.slice(0, 2).toUpperCase();
+    document.getElementById('store-status').textContent = store.status;
+    document.getElementById('stat-rating').textContent = store.rating;
+    document.getElementById('stat-time').textContent = store.deliveryTime;
+  }
+
+  function renderAll() {
+    renderRail();
+    renderGrid();
+    renderCart();
+    renderHeader();
+    restoreFocus();
+  }
+
+  /* ---------------- foco e navegação ---------------- */
+
+  function visibleFocusables() {
+    var scope = state.overlayId ? el.overlay : document.body;
+    var nodes = scope.querySelectorAll('[data-focusable]');
+    var list = [];
+    for (var i = 0; i < nodes.length; i += 1) {
+      var node = nodes[i];
+      if (node.hasAttribute('disabled')) continue;
+      if (!node.offsetParent && node !== document.activeElement) continue;
+      var rect = node.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) continue;
+      list.push(node);
+    }
+    return list;
+  }
+
+  function setFocus(node) {
+    if (!node) return;
+    if (state.focusEl && state.focusEl !== node) state.focusEl.classList.remove('focused');
+    state.focusEl = node;
+    node.classList.add('focused');
+    state.lastKey = node.getAttribute('data-fkey');
+    if (node.scrollIntoView) node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  function byKey(key) {
+    if (!key) return null;
+    var nodes = document.querySelectorAll('[data-fkey]');
+    for (var i = 0; i < nodes.length; i += 1) {
+      if (nodes[i].getAttribute('data-fkey') === key && !nodes[i].hasAttribute('disabled')) return nodes[i];
+    }
+    return null;
+  }
+
+  function restoreFocus() {
+    var target = byKey(state.lastKey);
+    if (!target) target = document.querySelector('#grid .card') || document.querySelector('[data-fkey]');
+    setFocus(target);
+  }
+
+  function move(dir) {
+    var current = state.focusEl;
+    if (!current) { restoreFocus(); return; }
+
+    var list = visibleFocusables();
+    var base = current.getBoundingClientRect();
+    var cx = base.left + base.width / 2;
+    var cy = base.top + base.height / 2;
+    var best = null;
+    var bestScore = Infinity;
+
+    for (var i = 0; i < list.length; i += 1) {
+      var node = list[i];
+      if (node === current) continue;
+      var rect = node.getBoundingClientRect();
+      var dx = (rect.left + rect.width / 2) - cx;
+      var dy = (rect.top + rect.height / 2) - cy;
+      var primary;
+      var secondary;
+      if (dir === 37) { if (dx > -8) continue; primary = -dx; secondary = Math.abs(dy); }
+      else if (dir === 39) { if (dx < 8) continue; primary = dx; secondary = Math.abs(dy); }
+      else if (dir === 38) { if (dy > -8) continue; primary = -dy; secondary = Math.abs(dx); }
+      else { if (dy < 8) continue; primary = dy; secondary = Math.abs(dx); }
+      var score = primary + secondary * 2.2;
+      if (score < bestScore) { bestScore = score; best = node; }
+    }
+
+    if (best) { setFocus(best); }
+  }
+
+  function activate(node) {
+    if (!node) return;
+    var action = node.getAttribute('data-action');
+    var id = node.getAttribute('data-id');
+
+    if (action === 'cat') selectCategory(id);
+    else if (action === 'dish') openDish(id);
+    else if (action === 'inc') changeQty(id, 1);
+    else if (action === 'dec') changeQty(id, -1);
+    else if (action === 'submit') submitOrder();
+    else if (action === 'page-prev') goPage(-1);
+    else if (action === 'page-next') goPage(1);
+    else if (action === 'ov-inc') { state.overlayQty += 1; document.getElementById('ov-qty').textContent = state.overlayQty; }
+    else if (action === 'ov-dec') {
+      if (state.overlayQty > 1) { state.overlayQty -= 1; document.getElementById('ov-qty').textContent = state.overlayQty; }
+    }
+    else if (action === 'ov-add') addFromOverlay();
+    else if (action === 'ov-close') closeOverlay();
+  }
+
+  /* ---------------- ações ---------------- */
+
+  function selectCategory(id) {
+    if (state.category === id) return;
+    state.category = id;
+    state.page = 0;
+    state.lastKey = 'cat-' + id;
+    renderRail();
+    renderGrid();
+    restoreFocus();
+  }
+
+  function goPage(delta) {
+    var pages = pageCount();
+    var next = state.page + delta;
+    if (next < 0 || next >= pages) return;
+    state.page = next;
+    renderGrid();
+    setFocus(el.grid.querySelector('.card') || byKey('page-next'));
+  }
+
+  function changeQty(id, delta) {
+    for (var i = 0; i < state.cart.length; i += 1) {
+      if (state.cart[i].id === id) {
+        state.cart[i].qty += delta;
+        if (state.cart[i].qty <= 0) state.cart.splice(i, 1);
+        break;
+      }
+    }
+    state.lastKey = delta > 0 ? 'inc-' + id : 'dec-' + id;
+    renderCart();
+    restoreFocus();
+  }
+
+  function addToCart(id, qty) {
+    var found = false;
+    for (var i = 0; i < state.cart.length; i += 1) {
+      if (state.cart[i].id === id) { state.cart[i].qty += qty; found = true; break; }
+    }
+    if (!found) state.cart.push({ id: id, qty: qty });
+    renderCart();
+  }
+
+  function openDish(id) {
+    var dish = findDish(id);
+    if (!dish) return;
+    state.overlayId = id;
+    state.overlayQty = 1;
+    state.preOverlayKey = state.lastKey;
+
+    document.getElementById('sheet-thumb').innerHTML = svg(iconFor(dish.category));
+    document.getElementById('sheet-title').textContent = dish.name;
+    document.getElementById('sheet-desc').textContent = dish.desc;
+    document.getElementById('sheet-time').textContent = 'Pronto em ' + dish.time + ' min';
+    document.getElementById('sheet-cat').textContent = dish.category;
+    document.getElementById('sheet-price').textContent = money.format(dish.price);
+    document.getElementById('ov-qty').textContent = '1';
+
+    el.overlay.hidden = false;
+    setFocus(document.querySelector('[data-fkey="ov-add"]'));
+  }
+
+  function closeOverlay() {
+    el.overlay.hidden = true;
+    state.overlayId = null;
+    if (state.preOverlayKey) state.lastKey = state.preOverlayKey;
+    restoreFocus();
+  }
+
+  function addFromOverlay() {
+    var dish = findDish(state.overlayId);
+    if (!dish) return;
+    addToCart(dish.id, state.overlayQty);
+    closeOverlay();
+    toast(dish.name + ' adicionado ao pedido');
+  }
+
+  function submitOrder() {
+    if (!cartCount()) { toast('Adicione um item antes de enviar'); return; }
+    var total = cartSubtotal() + state.store.deliveryFee;
+    state.cart = [];
+    state.lastKey = null;
+    renderCart();
+    restoreFocus();
+    toast('Pedido enviado · ' + money.format(total) + ' · cozinha notificada');
+  }
+
+  var toastTimer = null;
+  function toast(message) {
+    el.toast.textContent = message;
+    el.toast.className = 'toast show';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.className = 'toast'; }, 2200);
+  }
+
+  /* ---------------- teclado / controle remoto ---------------- */
+
+  document.addEventListener('keydown', function (event) {
+    var key = event.keyCode || event.which;
+    if (key === 37 || key === 38 || key === 39 || key === 40) {
+      event.preventDefault();
+      move(key);
+    } else if (key === 13) {
+      event.preventDefault();
+      activate(state.focusEl);
+    } else if (key === 33 || key === 34) {
+      event.preventDefault();
+      if (!state.overlayId) goPage(key === 34 ? 1 : -1);
+    } else if (key === 461 || key === 10009 || key === 8 || key === 27) {
+      event.preventDefault();
+      if (state.overlayId) closeOverlay();
+    }
+  });
+
+  document.addEventListener('click', function (event) {
+    var node = event.target.closest ? event.target.closest('[data-focusable]') : null;
+    if (!node || node.hasAttribute('disabled')) return;
+    setFocus(node);
+    activate(node);
+  });
+
+  /* ---------------- relógio ---------------- */
+
+  function tick() {
+    var now = new Date();
+    var hh = now.getHours();
+    var mm = now.getMinutes();
+    document.getElementById('stat-clock').textContent = (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+
+  /* ---------------- integração opcional com a API ---------------- */
+
+  function guessIcon(category) {
+    var value = String(category || '').toLowerCase();
+    if (/bebida|drink|suco|refri|cerveja|vinho/.test(value)) return 'i-drink';
+    if (/sobremesa|doce|dessert|bolo|sorvete/.test(value)) return 'i-dessert';
+    if (/entrada|porcao|porção|lanche|burger/.test(value)) return 'i-burger';
+    return 'i-pizza';
+  }
+
+  function loadStore(slug) {
+    var base = API_BASE.replace(/\/$/, '');
+    var source = document.getElementById('source');
+
+    fetch(base + '/api/tenants/' + encodeURIComponent(slug), { cache: 'no-store' })
+      .then(function (response) {
+        if (!response.ok) throw new Error('tenant ' + response.status);
+        return response.json();
+      })
+      .then(function (tenant) {
+        return fetch(base + '/api/catalog/tenants/' + encodeURIComponent(tenant.tenantId) + '/dishes', { cache: 'no-store' })
+          .then(function (response) {
+            if (!response.ok) throw new Error('dishes ' + response.status);
+            return response.json();
+          })
+          .then(function (dishes) { return { tenant: tenant, dishes: dishes }; });
+      })
+      .then(function (payload) {
+        var tenant = payload.tenant;
+        var dishes = payload.dishes.filter(function (dish) { return dish.available !== false; });
+
+        state.store = {
+          name: tenant.name || DEMO.name,
+          rating: tenant.rating ? String(tenant.rating).replace('.', ',') : DEMO.rating,
+          deliveryTime: tenant.deliveryTimeMin ? tenant.deliveryTimeMin + ' min' : DEMO.deliveryTime,
+          deliveryFee: typeof tenant.deliveryFee === 'number' ? tenant.deliveryFee : DEMO.deliveryFee,
+          status: tenant.status === 'OPEN' ? 'Aberto agora' : (tenant.status === 'CLOSED' ? 'Fechado' : DEMO.status)
+        };
+        state.dishes = dishes.map(function (dish) {
+          return {
+            id: String(dish.id),
+            name: dish.name,
+            desc: dish.description || '',
+            price: Number(dish.price) || 0,
+            category: dish.category || 'Cardápio',
+            time: dish.preparationTimeMin || 20,
+            tag: ''
+          };
+        });
+        state.cart = [];
+        state.category = 'all';
+        state.page = 0;
+        buildCategories();
+        renderAll();
+        source.textContent = ' · ' + slug;
+      })
+      .catch(function () {
+        source.textContent = ' · demonstração (API offline)';
+        toast('Não foi possível carregar a loja. Exibindo demonstração.');
+      });
+  }
+
+  /* ---------------- inicialização ---------------- */
+
+  function boot() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('api')) API_BASE = params.get('api');
+    if (params.get('hints') === '0') document.getElementById('hints').style.display = 'none';
+
+    buildCategories();
+    state.cart = [{ id: 'p1', qty: 1 }, { id: 'b1', qty: 1 }];
+    state.lastKey = 'dish-p1';
+    renderAll();
+    tick();
+    setInterval(tick, 30000);
+
+    var slug = params.get('slug');
+    if (slug) loadStore(slug);
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
