@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+build/
+.git/
+.gitignore
+.idea/
+*.iml
+Dockerfile
+.dockerignore
+npm-debug.log*
+.env*.local

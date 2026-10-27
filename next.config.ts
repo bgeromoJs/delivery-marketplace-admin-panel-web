@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Necessário para a imagem Docker: gera .next/standalone com só o runtime.
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
