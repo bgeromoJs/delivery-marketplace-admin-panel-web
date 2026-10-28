@@ -37,4 +37,9 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 EXPOSE 3000
 
+# Heap do Node limitado a 192 MB. O V8 reserva ~192 MB além desse valor (young
+# generation, code space), então o teto real do heap fica em ~384 MB — abaixo do
+# mem_limit de 448 MB no docker-compose.yml, para o V8 falhar antes do Docker.
+ENV NODE_OPTIONS="--max-old-space-size=192"
+
 CMD ["node", "server.js"]
